@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DEPI - project Loading...</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+
+<body>
+    <div id="loader-overlay">
+        <div class="loader-text">
+            <span id="loader-typed"></span>
+            <span class="loader-cursor">|</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const loaderTextContent = "DEPI - project";
+            const loaderTypedElement = document.getElementById("loader-typed");
+            const loaderCursorElement = document.querySelector(".loader-cursor");
+            const loaderOverlayElement = document.getElementById("loader-overlay");
+
+            let loaderCharIndex = 0;
+
+            function typeLoader() {
+                if (loaderTypedElement && loaderCharIndex < loaderTextContent.length) {
+                    loaderTypedElement.textContent += loaderTextContent.charAt(loaderCharIndex);
+                    loaderCharIndex++;
+                    setTimeout(typeLoader, 90);
+                } else {
+                    if (loaderCursorElement) {
+                        loaderCursorElement.style.animation = "blink 0.8s step-end infinite";
+                    }
+                    setTimeout(() => {
+                        if (loaderOverlayElement) {
+                            loaderOverlayElement.classList.add("fade-out");
+                        }
+                        setTimeout(() => {
+                            window.location.href = "{{ url_for('dashboard_view') }}";
+                        }, 800);
+                    }, 700);
+                }
+            }
+
+            if (loaderTypedElement && loaderCursorElement && loaderOverlayElement) {
+                typeLoader();
+            } else {
+                console.warn("Loader elements not found. Attempting to redirect or hide overlay.");
+                if (loaderOverlayElement) loaderOverlayElement.style.display = "none";
+                window.location.href = "{{ url_for('dashboard_view') }}";
+            }
+        });
+    </script>
+</body>
+
+</html>

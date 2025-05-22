@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ title_prefix if title_prefix else "🧹" }} {% endblock %}
+{% block title %}{{ page_title if page_title else "Data Cleaning (Rossmann)" }}{% endblock %}
+
+{% block header_title_icon %}<span class="icon">{{ title_prefix if title_prefix else "🧹" }}</span> {% endblock %}
+{% block header_title %}{{ page_title if page_title else "Data Cleaning (Rossmann)" }}{% endblock %}
+
+
+{% block content_body %}
+<div class="glass-card">
+    <div class="form-group">
+        <h2>Rossmann Data Cleaning</h2>
+        <p>
+            This section applies the data cleaning pipeline derived from the <code>rossmann_data_cleaning.ipynb</code>
+            notebook. It processes <code>train.csv</code>, <code>store.csv</code>, and <code>test.csv</code>.
+            These files are merged and combined to handle missing values consistently, apply outlier treatment
+            for 'Customers' and 'compdistance' (fitting scalers and deriving medians from the combined data),
+            and extract date features. The cleaned <strong>training data portion</strong> from this process is saved as
+            <code>data/clean_data.csv</code>.
+            Associated artifacts (imputation medians, outlier scalers) are also saved.
+        </p>
+        <p>
+            The "Clean Data (from Notebook Logic)" button will execute this pipeline.
+            The "Reset Data to Original Cleaned State" button will remove existing artifacts and then re-run
+            the cleaning process to ensure <code>data/clean_data.csv</code> and its artifacts are freshly generated
+            according to the notebook logic.
+        </p>
+        <p><strong>Required files in <code>data/</code> directory:</strong> <code>train.csv</code>,
+            <code>store.csv</code>, <code>test.csv</code>.
+        </p>
+    </div>
+
+    <form method="POST" action="{{ url_for('data_cleaning') }}" class="controls-form button-grid">
+        <button type="submit" name="action" value="clean_data" class="btn-form-action"><span class="icon">✨</span>
+            Clean Data (from Notebook Logic)</button>
+        <button type="submit" name="action" value="reset" class="btn-form-action"><span class="icon">🔄</span> Reset
+            Data to Original Cleaned State</button>
+    </form>
+</div>
+
+
+<div class="glass-card data-preview-card">
+    <h3><span class="icon">📄</span> Data Preview (First 10 rows of <code>data/clean_data.csv</code>)</h3>
+    {% if table_html %}
+    <div class="table-responsive-wrapper">
+        {{ table_html|safe }}
+    </div>
+    {% else %}
+    <p><span class="icon">🤷</span> No data to display. <code>data/clean_data.csv</code> may not exist or is empty.
+        Click "Clean Data" to generate it.</p>
+    {% endif %}
+</div>
+
+<div class="glass-card missing-summary-card">
+    <h3><span class="icon">📉</span> Missing Values Summary (in <code>data/clean_data.csv</code>)</h3>
+    {% if missing_summary is not none %} {# check if missing_summary is actually provided (could be {} or None) #}
+    {% if missing_summary %} {# if missing_summary is not empty dict #}
+    <ul class="eda-stats-list">
+        {% for col, count in missing_summary.items() %}
+        <li>{{ col }}: {{ count }}</li>
+        {% endfor %}
+    </ul>
+    {% else %} {# missing_summary is an empty dict, meaning no columns had > 0 missing values #}
+    <p><span class="icon">✅</span> No missing values found in <code>data/clean_data.csv</code>.</p>
+    {% endif %}
+    {% else %} {# missing_summary is None, meaning file probably wasn't loaded #}
+    <p><span class="icon">❓</span> Missing value summary not available. <code>data/clean_data.csv</code> may not exist.
+        Click "Clean Data" to generate it.</p>
+    {% endif %}
+</div>
+{% endblock %}

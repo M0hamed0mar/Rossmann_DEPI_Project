@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block page_title_prefix %}{% endblock %}{% block title %}DIP - project{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js" charset="utf-8"></script>
+</head>
+
+<body>
+    <!-- Navigation Toggle Button -->
+    <button id="nav-toggle" class="nav-toggle-btn" aria-label="Toggle Navigation Menu" title="Open Navigation">
+        ☰
+    </button>
+
+    <!-- Theme Toggle Button -->
+    <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle theme" title="Toggle Theme">
+        <span id="theme-icon">🌙</span>
+    </button>
+
+    <!-- Navigation Modal -->
+    <div id="nav-modal" class="nav-modal">
+        <div class="nav-modal-content">
+            <button id="nav-modal-close" class="nav-modal-close-btn" aria-label="Close Navigation Menu" title="Close Navigation">×</button>
+            <h2>Navigation</h2>
+            <ul class="nav-modal-list">
+                {% if nav_links %}
+                    {% for link in nav_links %}
+                        <li>
+                            <a href="{{ url_for(link.endpoint) }}" class="nav-modal-link">
+                                <span class="icon nav-modal-icon">{{ link.icon | safe if link.icon else '🔗' }}</span>
+                                {{ link.name }}
+                            </a>
+                        </li>
+                    {% endfor %}
+                {% else %}
+                    <li>No navigation links configured.</li>
+                {% endif %}
+                 <li><hr class="nav-modal-separator"></li>
+                 <li><a href="javascript:void(0);" id="nav-modal-close-link" class="nav-modal-link nav-modal-close-link-bottom"><span class="icon">🚪</span> Close Menu</a></li>
+            </ul>
+        </div>
+    </div>
+    <!-- End Navigation Modal -->
+
+
+    <div class="main-container" id="main-app-content">
+        <header>
+            <h1 class="title">
+                {% block header_title_icon %}
+                    {# Child templates fill this block directly with an icon span #}
+                {% endblock %}
+                {% block header_title %}{{ self.title() }}{% endblock %}
+            </h1>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content_body %}
+        {% endblock %}
+
+        <footer>
+            <p>Made with <span class="heart">❤️</span> for DEPI inspired projects.</p>
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const sunIcon = '☀️';
+            const moonIcon = '🌙';
+            const body = document.body;
+
+            window.applyGlobalTheme = function (theme) {
+                const themeIconElement = document.getElementById('theme-icon');
+                if (theme === 'dark') {
+                    body.classList.add('dark-mode');
+                    if (themeIconElement) themeIconElement.textContent = sunIcon;
+                } else {
+                    body.classList.remove('dark-mode');
+                    if (themeIconElement) themeIconElement.textContent = moonIcon;
+                }
+                try {
+                    localStorage.setItem('theme', theme);
+                } catch (e) {
+                    console.warn("Could not save theme to localStorage:", e);
+                }
+            };
+
+            let currentTheme = 'light';
+            try {
+                const storedTheme = localStorage.getItem('theme');
+                if (storedTheme) {
+                    currentTheme = storedTheme;
+                }
+            } catch (e) {
+                console.warn("Could not read theme from localStorage:", e);
+            }
+
+            if (!localStorage.getItem('theme') && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                currentTheme = 'dark';
+            }
+
+            window.applyGlobalTheme(currentTheme);
+
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    const storedTheme = localStorage.getItem('theme');
+                    if (!storedTheme) {
+                        window.applyGlobalTheme(e.matches ? 'dark' : 'light');
+                    }
+                });
+            }
+        })();
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme Toggle
+            const themeToggleButton = document.getElementById('theme-toggle');
+            if (themeToggleButton) {
+                themeToggleButton.addEventListener('click', () => {
+                    const isCurrentlyDark = document.body.classList.contains('dark-mode');
+                    const newTheme = isCurrentlyDark ? 'light' : 'dark';
+                    window.applyGlobalTheme(newTheme);
+                });
+            }
+
+            // Navigation Modal
+            const navToggleButton = document.getElementById('nav-toggle');
+            const navModal = document.getElementById('nav-modal');
+            const navModalCloseButton = document.getElementById('nav-modal-close');
+            const navModalCloseLinkBottom = document.getElementById('nav-modal-close-link');
+
+            function openNavModal() { if (navModal) navModal.classList.add('visible'); }
+            function closeNavModal() { if (navModal) navModal.classList.remove('visible'); }
+
+            if (navToggleButton) navToggleButton.addEventListener('click', openNavModal);
+            if (navModalCloseButton) navModalCloseButton.addEventListener('click', closeNavModal);
+            if (navModalCloseLinkBottom) navModalCloseLinkBottom.addEventListener('click', closeNavModal);
+
+            if (navModal) {
+                navModal.addEventListener('click', (event) => { if (event.target === navModal) closeNavModal(); });
+            }
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && navModal && navModal.classList.contains('visible')) closeNavModal();
+            });
+        });
+    </script>
+    {% block page_specific_scripts %}{% endblock %}
+</body>
+
+</html>

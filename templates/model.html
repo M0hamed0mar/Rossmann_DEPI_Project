@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ title_prefix if title_prefix else "🔮" }} {% endblock %}
+{% block title %}{{ page_title if page_title else "Model Training & Prediction" }}{% endblock %}
+
+{% block header_title_icon %}<span class="icon">{{ title_prefix if title_prefix else "🔮" }}</span> {% endblock %}
+{% block header_title %}{{ page_title if page_title else "Model Training & Prediction" }}{% endblock %}
+
+{% block content_body %}
+<div class="glass-card">
+  <div class="form-group">
+    <h2>Rossmann Store Sales Prediction (XGBoost Model)</h2>
+    <p>
+      This page allows you to train an XGBoost model based on the cleaned Rossmann data
+      (<code>data/clean_data.csv</code>)
+      and then use the trained model to predict sales on the raw test data (<code>data/test.csv</code>).
+    </p>
+    <p>
+      <strong>Step 1: Clean Data (on "Data Cleaning" Page).</strong> This will:
+    <ul>
+      <li>Load raw <code>data/train.csv</code> and <code>data/store.csv</code>.</li>
+      <li>Perform comprehensive cleaning: handle missing values, feature specific transformations (Promo2, Competition),
+        and date feature engineering.</li>
+      <li>Process outliers for 'Customers' and 'compdistance' using log-transform and RobustScaler (fitting these
+        scalers).</li>
+      <li>Save the fully cleaned training data to <code>data/clean_data.csv</code>.</li>
+      <li>Save the fitted outlier scalers (<code>outlier_scalers.pkl</code>) and imputation medians
+        (<code>imputation_medians.pkl</code>) to the <code>models/</code> directory.</li>
+    </ul>
+    </p>
+    <p>
+      <strong>Step 2: Train Model & Evaluate (This Page).</strong> This will:
+    <ul>
+      <li>Load <code>data/clean_data.csv</code> (which already has outliers processed).</li>
+      <li>Perform further feature engineering (one-hot encoding, specific mappings, drop 'Customers' from features).
+      </li>
+      <li>Save the feature column order (<code>x_train_columns.pkl</code>).</li>
+      <li>Split data, apply StandardScaler and PCA (fitting these).</li>
+      <li>Save the scaler (<code>standard_scaler.pkl</code>) and PCA transformer (<code>pca_transformer.pkl</code>).
+      </li>
+      <li>Train an XGBoost Regressor (with RandomizedSearchCV for hyperparameter tuning).</li>
+      <li>Save the trained model (<code>XGB_Model.pkl</code>).</li>
+      <li>Display evaluation metrics (MAE, RMSE, R²).</li>
+    </ul>
+    </p>
+    <p>
+      <strong>Step 3: Predict on Test Data (This Page).</strong> This will:
+    <ul>
+      <li>Load all saved models and preprocessors (XGB model, scalers, PCA, column order, medians).</li>
+      <li>Load raw <code>data/test.csv</code> and <code>data/store.csv</code>.</li>
+      <li>Apply the <strong>same</strong> cleaning and feature engineering pipeline to this test data, using the
+        saved/fitted artifacts.</li>
+      <li>Use the loaded preprocessors and model to generate sales predictions.</li>
+      <li>Display the first 20 predictions.</li>
+    </ul>
+    </p>
+    <p><strong>Important:</strong> Ensure <code>data/train.csv</code>, <code>data/store.csv</code>, and
+      <code>data/test.csv</code> are present in the <code>data/</code> directory for the respective operations. Start
+      with the "Data Cleaning" page to generate <code>clean_data.csv</code> and necessary artifacts.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('predict') }}" class="controls-form button-grid">
+    <button type="submit" name="action" value="train_model" class="btn-form-action btn-train">
+      <span class="icon">🏋️</span> Train Model & Evaluate
+    </button>
+    <button type="submit" name="action" value="predict_test" class="btn-form-action btn-predict">
+      <span class="icon">💡</span> Predict on Test Data
+    </button>
+  </form>
+</div>
+
+{% if error_message %}
+<div class="glass-card error-message-card"> {# Consider a specific class for better styling of just error cards #}
+  <p class="flash error">{{ error_message }}</p>
+</div>
+{% endif %}
+
+{% if training_metrics %}
+<div class="glass-card training-metrics-card">
+  <h3><span class="icon">📊</span> Model Training & Evaluation Metrics (XGBoost)</h3>
+  <div class="metrics-grid">
+    <div><strong>Train MAE:</strong> {{ "%.4f"|format(training_metrics['Train MAE']) }}</div>
+    <div><strong>Test MAE:</strong> {{ "%.4f"|format(training_metrics['Test MAE']) }}</div>
+    <div><strong>Train RMSE:</strong> {{ "%.4f"|format(training_metrics['Train RMSE']) }}</div>
+    <div><strong>Test RMSE:</strong> {{ "%.4f"|format(training_metrics['Test RMSE']) }}</div>
+    <div><strong>Train R²:</strong> {{ "%.4f"|format(training_metrics['Train R2']) }}</div>
+    <div><strong>Test R²:</strong> {{ "%.4f"|format(training_metrics['Test R2']) }}</div>
+  </div>
+  {% if training_metrics['Best Params'] %}
+  <div style="margin-top: 1rem;">
+    <strong>Best Hyperparameters (from RandomizedSearchCV):</strong>
+    <pre
+      style="background-color: var(--input-bg); padding: 0.5em; border-radius: 5px; font-size: 0.9em; overflow-x:auto;">{{ training_metrics['Best Params'] }}</pre>
+  </div>
+  {% endif %}
+  <p style="margin-top: 1rem; font-size: 0.9em; text-align: center;">
+    Model (XGB_Model.pkl), Scaler (standard_scaler.pkl), PCA (pca_transformer.pkl), column order (x_train_columns.pkl),
+    outlier scalers (outlier_scalers.pkl) and imputation medians (imputation_medians.pkl) saved to/used from
+    <code>models/</code>
+    directory.
+  </p>
+</div>
+{% endif %}
+
+{% if predictions_table %}
+<div class="glass-card predictions-table-card">
+  <h3><span class="icon">📈</span> Prediction Results on Test Data (First 20 Records)</h3>
+  <div class="table-responsive-wrapper">
+    {{ predictions_table|safe }}
+  </div>
+</div>
+{% endif %}
+
+{% if not training_metrics and not predictions_table and not error_message and request.method != 'POST' %}
+<div class="glass-card info-card">
+  <p><span class="icon">🖱️</span> First, go to "Data Cleaning" to prepare <code>clean_data.csv</code> and initial
+    artifacts. Then, click "Train Model" to train and evaluate, or "Predict on Test Data" if a model and all artifacts
+    are already present.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block page_specific_scripts %}
+<style>
+  /* Optional: Specific button styling */
+  .btn-train {
+    /* You can customize further */
+  }
+
+  .btn-predict {
+    /* You can customize further */
+  }
+
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 0.5rem 1rem;
+    /* row-gap column-gap */
+    margin-top: 1rem;
+  }
+
+  .metrics-grid div {
+    padding: 0.3em;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+  }
+
+  body.dark-mode .metrics-grid div {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+</style>
+{% endblock %}

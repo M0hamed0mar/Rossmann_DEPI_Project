@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ title_prefix if title_prefix else "📈" }} {% endblock %}
+{% block title %}{{ page_title if page_title else "Data Visualization" }}{% endblock %}
+
+{% block header_title_icon %}<span class="icon">{{ title_prefix if title_prefix else "📈" }}</span> {% endblock %}
+{% block header_title %}{{ page_title if page_title else "Data Visualization" }}{% endblock %}
+
+{% block content_body %}
+
+<div class="glass-card button-container-row">
+  <button id="show-predefined-btn" class="btn-main viz-mode-btn active"><span class="icon">📚</span> Show Predefined
+    Visualizations</button>
+  <button id="show-custom-builder-btn" class="btn-main viz-mode-btn"><span class="icon">🎨</span> Build Custom
+    Visualization</button>
+</div>
+
+<!-- Start with predefined visible, custom hidden by default JS will handle toggling -->
+<div id="predefined-viz-section" class="glass-card viz-section">
+  <form method="POST" action="{{ url_for('data_visualization') }}" class="controls-form button-grid">
+    <p class="full-width-p"><strong>Predefined Visualizations (from Notebook):</strong></p>
+    <button type="submit" name="action" value="monthly_total_sales" class="btn-form-action"><span class="icon">📅</span>
+      Total Monthly Sales</button>
+    <button type="submit" name="action" value="monthly_sales_by_store_type" class="btn-form-action"><span
+        class="icon">🏬</span> Monthly Sales by Store Type</button>
+    <button type="submit" name="action" value="avg_sales_by_day_of_week" class="btn-form-action"><span
+        class="icon">🗓️</span> Avg Sales by Day of Week (Bar)</button>
+    <button type="submit" name="action" value="sales_dist_by_store_type" class="btn-form-action"><span
+        class="icon">📊</span> Sales Dist. by Store Type (Box)</button>
+    <button type="submit" name="action" value="cust_vs_sales" class="btn-form-action"><span class="icon">🧑‍🤝‍🧑</span>
+      Customers vs Sales (Scatter)</button>
+    <button type="submit" name="action" value="correlation_heatmap" class="btn-form-action"><span class="icon">🔗</span>
+      Correlation Heatmap</button>
+  </form>
+</div>
+
+<div id="custom-viz-builder-section" class="glass-card viz-section" style="display:none;">
+  <form method="POST" action="{{ url_for('data_visualization') }}" id="custom-viz-form" class="controls-form"
+    style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+    <input type="hidden" name="action" value="generate_custom_plot">
+    <p class="full-width-p" style="text-align:center;"><strong>Custom Visualization Builder:</strong></p>
+
+    <div class="form-group plot-type-container" style="grid-column: 1 / -1;">
+      <label style="text-align:center; margin-bottom: 0.5rem; display:block; width:100%;">Select Plot Type:</label>
+      <div class="plot-type-selector">
+        <label class="plot-type-option">
+          <input type="radio" name="plot_type" value="histogram" checked> <span class="icon">📊</span> Histogram
+        </label>
+        <label class="plot-type-option">
+          <input type="radio" name="plot_type" value="boxplot"> <span class="icon">📦</span> Box Plot
+        </label>
+        <label class="plot-type-option">
+          <input type="radio" name="plot_type" value="scatter"> <span class="icon">✨</span> Scatter
+        </label>
+        <label class="plot-type-option">
+          <input type="radio" name="plot_type" value="bar"> <span class="icon">📊</span> Bar Chart
+        </label>
+        <label class="plot-type-option">
+          <input type="radio" name="plot_type" value="line"> <span class="icon">📈</span> Line Chart
+        </label>
+      </div>
+    </div>
+
+
+    <div class="form-group">
+      <label for="x_column">X-axis Column:</label>
+      <select name="x_column" id="x_column" class="form-control" required>
+        <option value="">-- Select X Column --</option>
+        {% for col in available_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group" id="y_column_group" style="display:none;">
+      <label for="y_column">Y-axis Column:</label>
+      <select name="y_column" id="y_column" class="form-control">
+        <option value="">-- Select Y Column --</option>
+        {% for col in available_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group" id="color_column_group">
+      <label for="color_column">Color/Group By Column (Optional):</label>
+      <select name="color_column" id="color_column" class="form-control">
+        <option value="">-- None --</option>
+        {% for col in available_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group" id="aggregation_group" style="display:none;">
+      <label for="aggregation_func">Aggregation for Y-axis:</label>
+      <select name="aggregation_func" id="aggregation_func" class="form-control">
+        <option value="sum">Sum</option>
+        <option value="mean" selected>Mean</option>
+        <option value="count">Count</option>
+        <option value="median">Median</option>
+        <option value="min">Min</option>
+        <option value="max">Max</option>
+      </select>
+    </div>
+
+    <div class="form-group" style="text-align: center; grid-column: 1 / -1; margin-top:1rem;">
+      <button type="submit" class="btn-form-action"><span class="icon">⚙️</span> Generate Custom Plot</button>
+    </div>
+  </form>
+</div>
+
+
+{% if plot_html %}
+<div class="glass-card plot-display-card">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <h3>Visualization Result:</h3>
+    {% if custom_plot_generated %} {# Only show save button for custom plots generated in this session #}
+    <div class="dropdown-container">
+      <button class="btn-secondary save-plot-btn dropdown-toggle-btn"><span class="icon">💾</span> Save Plot</button>
+      <div class="dropdown-menu">
+        <a href="{{ url_for('download_custom_plot', filename_ext='png') }}" class="dropdown-item">Save as PNG</a>
+        <a href="{{ url_for('download_custom_plot', filename_ext='jpeg') }}" class="dropdown-item">Save as JPEG</a>
+        <a href="{{ url_for('download_custom_plot', filename_ext='svg') }}" class="dropdown-item">Save as SVG</a>
+        <a href="{{ url_for('download_custom_plot', filename_ext='pdf') }}" class="dropdown-item">Save as PDF</a>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {{ plot_html|safe }}
+</div>
+{% elif request.form.get('action') %}
+<div class="glass-card info-card">
+  <p><span class="icon">⚠️</span> Could not generate the plot. Check selections, ensure <code>data/clean_data.csv</code>
+    is available, or check logs.</p>
+</div>
+{% else %}
+{% endif %}
+{% endblock %}
+
+{% block page_specific_scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const showPredefinedBtn = document.getElementById('show-predefined-btn');
+    const showCustomBuilderBtn = document.getElementById('show-custom-builder-btn');
+    const predefinedSection = document.getElementById('predefined-viz-section');
+    const customBuilderSection = document.getElementById('custom-viz-builder-section');
+
+    const plotTypeRadios = document.querySelectorAll('input[name="plot_type"]');
+    const yColumnGroup = document.getElementById('y_column_group');
+    const yColumnSelect = document.getElementById('y_column');
+    const aggregationGroup = document.getElementById('aggregation_group');
+
+    function updateActiveButton(activeBtn) {
+      if (showPredefinedBtn) showPredefinedBtn.classList.remove('active');
+      if (showCustomBuilderBtn) showCustomBuilderBtn.classList.remove('active');
+      if (activeBtn) activeBtn.classList.add('active');
+    }
+
+    if (showPredefinedBtn && predefinedSection && customBuilderSection) {
+      showPredefinedBtn.addEventListener('click', function () {
+        predefinedSection.style.display = 'block';
+        customBuilderSection.style.display = 'none';
+        updateActiveButton(this);
+        sessionStorage.setItem('vizViewMode', 'predefined'); // Remember user's choice
+      });
+    }
+
+    if (showCustomBuilderBtn && customBuilderSection && predefinedSection) {
+      showCustomBuilderBtn.addEventListener('click', function () {
+        customBuilderSection.style.display = 'block';
+        predefinedSection.style.display = 'none';
+        updateActiveButton(this);
+        sessionStorage.setItem('vizViewMode', 'custom'); // Remember user's choice
+      });
+    }
+
+    // Initial state based on sessionStorage (client-side preference)
+    const savedViewMode = sessionStorage.getItem('vizViewMode');
+    if (savedViewMode === 'custom' && showCustomBuilderBtn) {
+      showCustomBuilderBtn.click();
+    } else if (showPredefinedBtn) { // Default to predefined if no preference or preference is 'predefined'
+      predefinedSection.style.display = 'block';
+      if (customBuilderSection) customBuilderSection.style.display = 'none';
+      updateActiveButton(showPredefinedBtn);
+    }
+
+
+    function updateCustomFormFields() {
+      let selectedPlotType = 'histogram';
+      plotTypeRadios.forEach(radio => {
+        if (radio.checked) selectedPlotType = radio.value;
+      });
+
+      yColumnGroup.style.display = 'none';
+      yColumnSelect.required = false;
+      aggregationGroup.style.display = 'none';
+
+      if (selectedPlotType === 'histogram') { /* X-axis primarily used */ }
+      else if (selectedPlotType === 'boxplot') { yColumnGroup.style.display = 'block'; yColumnSelect.required = true; }
+      else if (selectedPlotType === 'scatter') { yColumnGroup.style.display = 'block'; yColumnSelect.required = true; }
+      else if (selectedPlotType === 'bar' || selectedPlotType === 'line') {
+        yColumnGroup.style.display = 'block'; yColumnSelect.required = true;
+        aggregationGroup.style.display = 'block';
+      }
+    }
+
+    plotTypeRadios.forEach(radio => radio.addEventListener('change', updateCustomFormFields));
+    updateCustomFormFields();
+
+
+    const dropdownToggles = document.querySelectorAll('.dropdown-toggle-btn');
+    dropdownToggles.forEach(toggle => {
+      toggle.addEventListener('click', function (event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-menu.show').forEach(openMenu => {
+          if (openMenu !== this.nextElementSibling) {
+            openMenu.classList.remove('show');
+          }
+        });
+        // Ensure nextElementSibling exists and is a dropdown-menu
+        if (this.nextElementSibling && this.nextElementSibling.classList.contains('dropdown-menu')) {
+          this.nextElementSibling.classList.toggle('show');
+        }
+      });
+    });
+
+    window.addEventListener('click', function (event) {
+      document.querySelectorAll('.dropdown-menu.show').forEach(openMenu => {
+        // Ensure previousElementSibling exists before trying to access contains
+        if (openMenu.previousElementSibling && !openMenu.previousElementSibling.contains(event.target)) {
+          openMenu.classList.remove('show');
+        }
+      });
+    });
+
+  });
+</script>
+{% endblock %}

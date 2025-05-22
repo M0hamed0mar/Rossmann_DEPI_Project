@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title_prefix %}{{ title_prefix if title_prefix else "📊" }} {% endblock %}
+{% block title %}{{ page_title if page_title else "Data Exploration" }}{% endblock %}
+
+{% block header_title_icon %}<span class="icon">{{ title_prefix if title_prefix else "📊" }}</span> {% endblock %}
+{% block header_title %}{{ page_title if page_title else "Data Exploration" }}{% endblock %}
+
+
+{% block content_body %}
+
+{# === This is your provided intro card, with the button corrected to list datasets === #}
+<div class="glass-card form-flex"> {# Main intro card #}
+  <div class="form-group">
+    <h2>Exploratory Data Analysis (EDA)</h2> {# Title specific to this intro section #}
+    <p>
+      This section allows for an automated exploratory data analysis of CSV files
+      placed in the <code>data/</code> directory of the project.
+    </p>
+    <p>
+      Click the "List Available Datasets" button below. The application will scan for CSV files.
+      Then, you can click on a specific dataset name to generate and view its EDA report.
+    </p>
+    <ul>
+      <li>Basic data overview (shape, columns, data types, first 5 rows).</li>
+      <li>Descriptive statistics for numerical and categorical features.</li>
+      <li>A report of missing values.</li>
+      <li>Value counts for selected categorical columns (e.g., 'StateHoliday', 'StoreType' if present).</li>
+      <li>Interactive distribution plots and outlier box plots for suitable columns.</li>
+    </ul>
+    <p>
+      This automated EDA provides a quick insight into your datasets, similar to the initial steps
+      taken in notebook-based analysis.
+    </p>
+  </div>
+
+  <div class="form-group" style="text-align: center;"> {# Centering the button #}
+    {# Button text and href updated to point to listing datasets first #}
+    <a href="{{ url_for('list_datasets_route') }}" class="btn-main">
+      <span class="icon">📋</span> List Available Datasets
+    </a>
+  </div>
+</div>
+{# === End of intro card === #}
+
+
+{# --- Section to List Available Dataset Files --- #}
+{% if dataset_files is not none %}
+<div class="glass-card dataset-list-card">
+  <h4>Available CSV Datasets in 'data/' folder:</h4>
+  {% if dataset_files %}
+  <ul class="dataset-buttons-list">
+    {% for file_name in dataset_files %}
+    <li>
+      <a href="{{ url_for('explore_single_file_route', filename=file_name) }}" class="btn-dataset-select">
+        <span class="icon">📄</span> {{ file_name }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% elif request.endpoint == 'list_datasets_route' %}
+  <p>No CSV files found in the 'data/' directory. Please add some to explore.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+
+{# --- Section to Display EDA Report for a SINGLE Selected File --- #}
+{% if eda_report %}
+<div class="eda-section glass-card">
+  <h2><span class="icon">📑</span> EDA Report for: {{ eda_report.filename }}</h2>
+
+  {% if eda_report.overview_html %}
+  <div class="eda-subsection">
+    {{ eda_report.overview_html|safe }}
+  </div>
+  {% endif %}
+
+  {% if eda_report.statistics_html %}
+  <div class="eda-subsection">
+    {{ eda_report.statistics_html|safe }}
+  </div>
+  {% endif %}
+
+  {% if eda_report.missing_html %}
+  <div class="eda-subsection">
+    {{ eda_report.missing_html|safe }}
+  </div>
+  {% endif %}
+
+  {% if eda_report.value_counts_html %}
+  <div class="eda-subsection">
+    {{ eda_report.value_counts_html|safe }}
+  </div>
+  {% endif %}
+
+  {% if eda_report.plots %}
+  {% for plot_html_or_heading in eda_report.plots %}
+  {% if plot_html_or_heading is startingwith '<h4' or plot_html_or_heading is startingwith '<hr' %} {{
+    plot_html_or_heading|safe }} {% elif 'plot-limit-message' in plot_html_or_heading or 'text-warning' in
+    plot_html_or_heading or 'text-danger' in plot_html_or_heading %} {{ plot_html_or_heading|safe }} {% elif
+    plot_html_or_heading %} <div class="plot-container">
+    {{ plot_html_or_heading|safe }}
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+</div>
+{% endif %}
+{# --- End EDA Report Section --- #}
+
+<!-- 
+<div class="images-row">
+  <div class="img-card">
+    <h3><span class="icon">💡</span> How it Works</h3>
+    <p>List datasets, then click a file name. The EDA report for that file will be generated and displayed above.</p>
+  </div>
+  <div class="img-card">
+    <h3><span class="icon">📂</span> Data Location</h3>
+    <p>Ensure your CSV files are in the <code>data/</code> folder within your project directory.</p>
+  </div>
+</div> 
+-->
+{% endblock %}
+
+{% block page_specific_scripts %}
+<script>
+  console.log("Dashboard page with correct intro and on-demand EDA functionality loaded.");
+</script>
+{% endblock %}
