@@ -1,4 +1,4 @@
-# AIS4_S1_3 – DEPI-Team Project
+# DEPI-Team Project
 
 Welcome to the official repository for the **AIS4_S1_3** project, developed by the **DEPI-Team**. This project demonstrates a blend of data analysis, visualization, and web development using Python and Flask.
 
