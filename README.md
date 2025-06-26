@@ -36,8 +36,8 @@ Follow these steps to set up and run the project locally:
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/AbdalrahmanOthman01/AIS4_S1_3.git
-   cd AIS4_S1_3
+   git clone https://github.com/M0hamed0mar/Rossmann_DEPI_Project.git
+   cd Rossmann_DEPI_Project
    ```
 
 2. **(Optional) Create a virtual environment**:
